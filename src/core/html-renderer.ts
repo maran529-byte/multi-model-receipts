@@ -11,6 +11,202 @@ export class HtmlRenderer {
     this.customBranding = customBranding;
   }
 
+  generateSummaryHtml(usages: AggregatedUsage[], options: ReceiptOptions): string {
+    const totalCost = usages.reduce((sum, u) => sum + u.totalCost, 0);
+    const totalTokens = usages.reduce((sum, u) => sum + u.totalTokens, 0);
+    const totalInput = usages.reduce((sum, u) => sum + u.totalInputTokens, 0);
+    const totalOutput = usages.reduce((sum, u) => sum + u.totalOutputTokens, 0);
+
+    const periodLabels: Record<string, string> = {
+      today: 'Today',
+      week: 'This Week',
+      month: 'This Month',
+    };
+
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Usage Summary Report</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 16px;
+      background: #1a1a1a;
+      min-height: 100vh;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .header {
+      text-align: center;
+      padding: 30px;
+      background: #f8f8f8;
+      border-radius: 10px;
+      margin-bottom: 30px;
+    }
+    .header h1 {
+      font-size: 24px;
+      margin-bottom: 10px;
+    }
+    .header .date {
+      color: #666;
+      font-size: 14px;
+    }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    .period-card {
+      background: #f8f8f8;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .period-card h2 {
+      font-size: 14px;
+      color: #666;
+      margin-bottom: 15px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .period-card .cost {
+      font-size: 32px;
+      font-weight: bold;
+      margin-bottom: 15px;
+    }
+    .period-card .stat {
+      display: flex;
+      justify-content: space-between;
+      padding: 5px 0;
+      border-bottom: 1px dashed #ddd;
+      font-size: 14px;
+    }
+    .period-card .stat:last-child {
+      border-bottom: none;
+    }
+    .period-card .stat .label {
+      color: #666;
+    }
+    .period-card .stat .value {
+      font-weight: bold;
+    }
+    .models-section {
+      background: #f8f8f8;
+      padding: 25px;
+      border-radius: 10px;
+      margin-bottom: 30px;
+    }
+    .models-section h2 {
+      font-size: 18px;
+      margin-bottom: 20px;
+      padding-bottom: 10px;
+      border-bottom: 2px solid #333;
+    }
+    .model-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr 1fr;
+      padding: 10px 0;
+      border-bottom: 1px solid #eee;
+      font-size: 14px;
+    }
+    .model-row.header {
+      font-weight: bold;
+      background: #eee;
+      padding: 10px;
+      margin: -25px;
+      margin-bottom: 10px;
+      border-radius: 5px;
+    }
+    .footer {
+      text-align: center;
+      padding: 20px;
+      color: #666;
+      font-size: 13px;
+    }
+    .footer a {
+      color: #333;
+    }
+    @media print {
+      body { background: white; }
+      .period-card, .models-section { box-shadow: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h1>📊 Usage Summary Report</h1>
+      <div class="date">Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</div>
+      ${this.customBranding ? `<div>User: ${this.escapeHtml(this.customBranding)}</div>` : ''}
+    </div>
+
+    <div class="summary-grid">
+      ${usages.map((usage, i) => `
+        <div class="period-card">
+          <h2>${periodLabels[usage.period] || usage.period}</h2>
+          <div class="cost">${this.formatCurrency(usage.totalCost, options.currency)}</div>
+          <div class="stat"><span class="label">Total Tokens</span><span class="value">${usage.totalTokens.toLocaleString()}</span></div>
+          <div class="stat"><span class="label">Input</span><span class="value">${usage.totalInputTokens.toLocaleString()}</span></div>
+          <div class="stat"><span class="label">Output</span><span class="value">${usage.totalOutputTokens.toLocaleString()}</span></div>
+          ${usage.totalCacheCreationTokens > 0 ? `<div class="stat"><span class="label">Cache Write</span><span class="value">${usage.totalCacheCreationTokens.toLocaleString()}</span></div>` : ''}
+          ${usage.totalCacheReadTokens > 0 ? `<div class="stat"><span class="label">Cache Read</span><span class="value">${usage.totalCacheReadTokens.toLocaleString()}</span></div>` : ''}
+          <div class="stat"><span class="label">Requests</span><span class="value">${usage.totalRequestCount.toLocaleString()}</span></div>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="models-section">
+      <h2>Model Breakdown (This Month)</h2>
+      <div class="model-row header">
+        <span>Model</span>
+        <span>Input</span>
+        <span>Output</span>
+        <span>Tokens</span>
+        <span>Cost</span>
+      </div>
+      ${(usages.find(u => u.period === 'month')?.providers[0]?.modelsUsed || [])
+        .sort((a, b) => b.cost - a.cost)
+        .map(m => `
+        <div class="model-row">
+          <span>${this.escapeHtml(m.modelName)}</span>
+          <span>${m.inputTokens.toLocaleString()}</span>
+          <span>${m.outputTokens.toLocaleString()}</span>
+          <span>${m.totalTokens.toLocaleString()}</span>
+          <span>${this.formatCurrency(m.cost, options.currency)}</span>
+        </div>
+      `).join('')}
+    </div>
+
+    <div class="footer">
+      <p>Generated by <strong>Multi-Model Receipts</strong></p>
+      <p><a href="https://github.com/marans/multi-model-receipts">github.com/marans/multi-model-receipts</a></p>
+      ${this.qrImagePath ? `<p style="margin-top:15px"><img src="${this.escapeHtml(this.qrImagePath)}" style="width:120px;border:1px solid #ddd" /></p>` : ''}
+    </div>
+  </div>
+
+  <script>
+    console.log('Usage Summary Generated!');
+    console.log('Total Cost:', '${this.formatCurrency(totalCost, options.currency)}');
+    console.log('Total Tokens:', '${totalTokens.toLocaleString()}');
+  </script>
+</body>
+</html>`;
+  }
+
+  private formatCurrency(amount: number, currency: string = 'USD'): string {
+    if (amount < 0.01 && amount > 0) {
+      return `$${amount.toFixed(4)}`;
+    }
+    return `$${amount.toFixed(2)}`;
+  }
+
   generateHtml(usage: AggregatedUsage, options: ReceiptOptions): string {
     const providers = usage.providers;
     const primaryProvider = providers[0];

@@ -1,6 +1,6 @@
 {
   "name": "multi-model-receipts",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Universal AI model usage receipt generator - track tokens and costs across OpenAI, Anthropic, Google, Azure, MiniMax and more",
   "license": "MIT",
   "author": "Marans <maran529@icloud.com>",

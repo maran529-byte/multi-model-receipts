@@ -81,6 +81,21 @@ multi-model-receipts generate --output html,console,json
 
 ## Commands
 
+### `summary`
+
+Generate daily/weekly/monthly token usage summary.
+
+```bash
+# Show all periods (today, week, month)
+multi-model-receipts summary --provider openai --api-key sk-xxx
+
+# HTML output only
+multi-model-receipts summary --provider openai --output html
+
+# JSON for data analysis
+multi-model-receipts summary --provider openai --output json
+```
+
 ### `generate`
 
 Generate a usage receipt.
