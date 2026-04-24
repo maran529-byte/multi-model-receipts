@@ -302,6 +302,12 @@ MIT
 
 ## Support
 
-If this project helps you track AI costs, consider buying me a coffee ☕
+If this project helps you track AI costs, your support is appreciated! 🙏
 
-Donation QR code can be displayed on receipts!
+### 打赏 / Donate
+
+如果这个项目对你有帮助，欢迎打赏支持！
+
+![Donation QR Code](donation-qr.jpg)
+
+_扫码打赏 / Scan to donate_
